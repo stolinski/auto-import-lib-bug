@@ -1,8 +1,8 @@
-import { existsSync, statSync } from 'fs';
-import { readdir } from 'fs/promises';
-import path from 'path';
+import { existsSync, statSync } from "fs";
+import { readdir } from "fs/promises";
+import path from "path";
 
-import { walk } from 'estree-walker';
+import { walk } from "estree-walker";
 
 export function createMapping({ components, module, mapping, filter }) {
   const importMapping = {};
@@ -11,11 +11,11 @@ export function createMapping({ components, module, mapping, filter }) {
   // Read all components from given paths
   // and transform the import names into CamelCase
 
-  makeArray(components).forEach(async comp => {
+  makeArray(components).forEach(async (comp) => {
     let thisComp = comp;
     let flat = false;
-    let prefix = '';
-    if (comp && typeof comp !== 'string') {
+    let prefix = "";
+    if (comp && typeof comp !== "string") {
       thisComp = comp.value || comp.name || comp.component || comp.directory;
       if (comp.flat !== undefined) {
         flat = !!comp.flat;
@@ -34,19 +34,19 @@ export function createMapping({ components, module, mapping, filter }) {
 
     for await (const name of traverse(componentPath, filter)) {
       let moduleName = getModuleName(componentPath, name, flat, prefix);
-      importMapping[moduleName] = target => {
+      importMapping[moduleName] = (target) => {
         let moduleFrom = normalizePath(path.relative(target, name));
-        if (!moduleFrom.startsWith('.')) {
-          moduleFrom = './' + moduleFrom;
+        if (!moduleFrom.startsWith(".")) {
+          moduleFrom = "./" + moduleFrom;
         }
-        return `import ${moduleName} from '${moduleFrom}'`
-      }
+        return `import ${moduleName} from '${moduleFrom}'`;
+      };
     }
   });
 
   // Select methods or properties from a given module
   Object.entries(makeLiteral(module)).forEach(([moduleFrom, names]) => {
-    makeArray(names).forEach(name => {
+    makeArray(names).forEach((name) => {
       importMapping[name] = `import { ${name} } from '${moduleFrom}'`;
     });
   });
@@ -54,18 +54,15 @@ export function createMapping({ components, module, mapping, filter }) {
   // Custom mapping is useful for overwriting and
   // import things other than components
   Object.entries(makeLiteral(mapping)).forEach(([name, value]) => {
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       importMapping[name] = value;
     }
-    if (typeof value === 'function') {
+    if (typeof value === "function") {
       importMapping[name] = `;let ${name} = () => { ${value()} };`;
     }
   });
 
-  return [
-    importMapping,
-    componentPaths,
-  ];
+  return [importMapping, componentPaths];
 }
 
 export function walkAST(ast) {
@@ -74,78 +71,78 @@ export function walkAST(ast) {
   if (ast.instance && ast.instance.content) {
     walk(ast.instance.content, {
       enter(node, parent) {
-        if (node.type === 'ImportDeclaration') {
-          node.specifiers.forEach(sf => {
+        if (node.type === "ImportDeclaration") {
+          node.specifiers.forEach((sf) => {
             imported.add(sf.local.name);
           });
         }
-        if (node.type === 'Identifier') {
+        if (node.type === "Identifier") {
           switch (parent.type) {
-            case 'VariableDeclarator': {
+            case "VariableDeclarator": {
               if (parent.init && parent.init.name == node.name) {
                 maybeUsed.add(node.name);
               }
               break;
             }
-            case 'Property': {
+            case "Property": {
               if (parent.vaue && parent.value.name === node.name) {
                 maybeUsed.add(node.name);
               }
               break;
             }
-            case 'TaggedTemplateExpression':
-            case 'ArrayExpression':
-            case 'CallExpression':
-            case 'NewExpression':
-            case 'MemberExpression': {
+            case "TaggedTemplateExpression":
+            case "ArrayExpression":
+            case "CallExpression":
+            case "NewExpression":
+            case "MemberExpression": {
               maybeUsed.add(node.name);
               break;
             }
           }
         }
-        if (node.type == 'ExportDefaultDeclaration') {
+        if (node.type == "ExportDefaultDeclaration") {
           let name = node.declaration.name;
           if (maybeUsed.has(name)) {
             maybeUsed.delete(name);
           }
         }
-      }
+      },
     });
   }
   if (ast.html && ast.html.children) {
     walk(ast.html.children, {
       enter(node, parent) {
-        if (node.type == 'InlineComponent' && !/^svelte:/.test(node.name)) {
+        if (node.type == "InlineComponent" && !/^svelte:/.test(node.name)) {
           maybeUsed.add(node.name);
         }
-        if (node.type === 'Identifier') {
+        if (node.type === "Identifier") {
           switch (parent.type) {
-            case 'Property': {
+            case "Property": {
               if (parent.vaue && parent.value.name === node.name) {
                 maybeUsed.add(node.name);
               }
               break;
             }
-            case 'TaggedTemplateExpression':
-            case 'ArrayExpression':
-            case 'CallExpression':
-            case 'NewExpression':
-            case 'MemberExpression': {
+            case "TaggedTemplateExpression":
+            case "ArrayExpression":
+            case "CallExpression":
+            case "NewExpression":
+            case "MemberExpression": {
               maybeUsed.add(node.name);
               break;
             }
           }
         }
-      }
+      },
     });
   }
-  return { imported, maybeUsed }
+  return { imported, maybeUsed };
 }
 
 export function prependTo(code, injection, start) {
-  let head = code.slice(0, start + 8);
-  let tail = code.slice(start + 8);
-  return head + '\n' + injection + '\n' + tail;
+  let head = code.slice(0, code.indexOf(">") + 1);
+  let tail = code.slice(code.indexOf(">") + 1);
+  return head + "\n" + injection + "\n" + tail;
 }
 
 export function camelize(name) {
@@ -155,12 +152,12 @@ export function camelize(name) {
 }
 
 export function getLastDir(dir) {
-  let dirs = dir.split(path.sep).filter(n => n !== 'index');
+  let dirs = dir.split(path.sep).filter((n) => n !== "index");
   return dirs[dirs.length - 1];
 }
 
 export function normalizePath(name) {
-  return name.replace(/\\/g, '/');
+  return name.replace(/\\/g, "/");
 }
 
 export function getModuleName(root, name, flat, prefix) {
@@ -168,15 +165,16 @@ export function getModuleName(root, name, flat, prefix) {
   if (flat) {
     let parsed = path.parse(name);
     moduleName = camelize(parsed.name);
-    if (parsed.name === 'index') {
+    if (parsed.name === "index") {
       moduleName = camelize(getLastDir(parsed.dir));
     }
   } else {
-    let parsed = (root === name)
-      ? path.parse(path.parse(name).base)
-      : path.parse(path.relative(root, name));
-    moduleName = camelize(parsed.dir + '_' + parsed.name);
-    if (parsed.name === 'index') {
+    let parsed =
+      root === name
+        ? path.parse(path.parse(name).base)
+        : path.parse(path.relative(root, name));
+    moduleName = camelize(parsed.dir + "_" + parsed.name);
+    if (parsed.name === "index") {
       moduleName = camelize(parsed.dir);
     }
   }

@@ -1,9 +1,9 @@
-import path from 'path';
-import { fileURLToPath } from 'url';
-import * as svelte from 'svelte/compiler';
-import { createFilter } from '@rollup/pluginutils';
-import { createMapping, walkAST, prependTo, normalizePath } from './lib.js';
-import MagicString from 'magic-string';
+import path from "path";
+import { fileURLToPath } from "url";
+import * as svelte from "svelte/compiler";
+import { createFilter } from "@rollup/pluginutils";
+import { createMapping, walkAST, prependTo, normalizePath } from "./lib.js";
+import MagicString from "magic-string";
 
 /**
  * @param {string|string[]} [components] - Component paths
@@ -12,9 +12,15 @@ import MagicString from 'magic-string';
  * @param {string|string[]} [include]
  * @param {string|String[]} [exclude]
  */
-export default function autoImport({ components, module, mapping, include, exclude } = {}) {
+export default function autoImport({
+  components,
+  module,
+  mapping,
+  include,
+  exclude,
+} = {}) {
   if (!include) {
-    include = ['**/*.svelte'];
+    include = ["**/*.svelte"];
   }
   const filter = createFilter(include, exclude);
 
@@ -23,8 +29,12 @@ export default function autoImport({ components, module, mapping, include, exclu
   let preprocess = [];
 
   function updateMapping() {
-    [importMapping, componentPaths] =
-      createMapping({ components, module, mapping, filter });
+    [importMapping, componentPaths] = createMapping({
+      components,
+      module,
+      mapping,
+      filter,
+    });
   }
 
   function transformCode(code, ast, filePath) {
@@ -38,18 +48,17 @@ export default function autoImport({ components, module, mapping, include, exclu
         return false;
       }
       if (maybeUsed.has(name)) {
-        let importValue = (typeof value == 'function')
-          ? value(path.dirname(filePath))
-          : value;
+        let importValue =
+          typeof value == "function" ? value(path.dirname(filePath)) : value;
         imports.push(importValue);
       }
     });
     if (imports.length) {
-      let value = imports.join('\n');
+      let value = imports.join("\n");
       if (ast.instance) {
         code = prependTo(code, value, ast.instance.start);
       } else {
-        code += `<script>${ value }</script>`;
+        code += `<script>${value}</script>`;
       }
     }
     return code;
@@ -58,32 +67,36 @@ export default function autoImport({ components, module, mapping, include, exclu
   updateMapping();
 
   return {
-    name: 'vite-plugin-autoimport',
+    name: "vite-plugin-autoimport",
 
-    enforce: 'pre',
+    enforce: "pre",
 
     // Must be processed before vite-plugin-svelte
     async configResolved(config) {
       let { plugins } = config;
-      let indexPluginSvelte = plugins.findIndex(n => n.name === 'vite-plugin-svelte');
-      let indexAutoImport = plugins.findIndex(n => n.name === 'vite-plugin-autoimport');
+      let indexPluginSvelte = plugins.findIndex(
+        (n) => n.name === "vite-plugin-svelte"
+      );
+      let indexAutoImport = plugins.findIndex(
+        (n) => n.name === "vite-plugin-autoimport"
+      );
       if (indexPluginSvelte < indexAutoImport) {
         let autoImport = plugins[indexAutoImport];
         plugins.splice(indexAutoImport, 1);
         config.plugins = [
           ...plugins.slice(0, indexPluginSvelte),
           autoImport,
-          ...plugins.slice(indexPluginSvelte + 1)
+          ...plugins.slice(indexPluginSvelte + 1),
         ];
       }
       try {
         let dirname = path.dirname(fileURLToPath(import.meta.url));
         let relative = path.relative(dirname, config.inlineConfig.root);
-        let configFile = path.join(relative, './svelte.config.js');
-        let pkg = await import(normalizePath('./' + configFile));
+        let configFile = path.join(relative, "./svelte.config.js");
+        let pkg = await import(normalizePath("./" + configFile));
         preprocess = pkg.default.preprocess || [];
-      } catch(e) {
-        console.warn('Error reading svelte.config.js');
+      } catch (e) {
+        console.warn("Error reading svelte.config.js");
       }
     },
 
@@ -108,8 +121,8 @@ export default function autoImport({ components, module, mapping, include, exclu
       if (componentPaths.length) {
         server.watcher
           .add(componentPaths)
-          .on('add', updateMapping)
-          .on('unlink', updateMapping);
+          .on("add", updateMapping)
+          .on("unlink", updateMapping);
       }
     },
 
@@ -129,8 +142,7 @@ export default function autoImport({ components, module, mapping, include, exclu
       return {
         code: s.toString(),
         map: s.generateMap(),
-      }
-    }
-
-  }
+      };
+    },
+  };
 }

@@ -1,1 +1,4 @@
-<Button>Hello</Button>
+<script lang="ts">
+</script>
+
+<FormButton>button</FormButton>
